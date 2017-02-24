@@ -1,0 +1,14 @@
+{
+    "collector":
+    {
+        "unix_domain_socket":"/var/tmp/dark_metrix_log.sock",
+        "upload_duration":1,
+        "upload_number":100
+    },
+    "kafka":
+    {
+        "broker":"tkafkalog.useus.com.cn",
+        "topic":"dark_metrix_log",
+        "upload_number":"none"
+    }
+}

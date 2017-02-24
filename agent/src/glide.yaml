@@ -1,0 +1,6 @@
+package: github.com/DarkMetrix/log/agent
+import:
+- package: github.com/cihub/seelog
+  version: ^2.6
+- package: github.com/spf13/viper
+- package: github.com/spf13/cobra
