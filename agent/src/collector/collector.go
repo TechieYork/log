@@ -16,20 +16,20 @@ type Collector struct {
 	address string
 	conn net.Conn
 
-	log_queue *queue.LogQueue
+	logQueue *queue.LogQueue
 }
 
-func NewCollector(address string, log_queue *queue.LogQueue) *Collector {
+func NewCollector(address string, logQueue *queue.LogQueue) *Collector {
 	return &Collector{
 		address: address,
 		conn: nil,
-		log_queue: log_queue,
+		logQueue: logQueue,
 	}
 }
 
 func (collector *Collector) Run() error {
 	//Initial local unix domain socket to recv log
-	unix_addr, err := net.ResolveUnixAddr("unixgram", collector.address)
+	unixAddr, err := net.ResolveUnixAddr("unixgram", collector.address)
 
 	if nil != err {
 		log.Warn("Resolve unix socket addr err:" + err.Error())
@@ -37,7 +37,7 @@ func (collector *Collector) Run() error {
 	}
 
     //Listen unix domain socket and get connection
-	conn, err := net.ListenUnixgram("unixgram", unix_addr)
+	conn, err := net.ListenUnixgram("unixgram", unixAddr)
 
 	if nil != err {
 		log.Warn("Listen unix socket addr err:" + err.Error())
@@ -100,18 +100,18 @@ func (collector *Collector) Collect() error {
 		}
 
 		//Put the log into queue
-		var log_package log_proto.LogPackage
+		var logPackage log_proto.LogPackage
 
-		err = proto.Unmarshal(buffer[0:len], &log_package)
+		err = proto.Unmarshal(buffer[0:len], &logPackage)
 
 		if err != nil {
 			log.Warn("Collector couldn't unmarshal received buffer! err:" + err.Error())
 			continue
 		}
 
-		collector.log_queue.Push(&log_package)
+		collector.logQueue.Push(&logPackage)
 
-		log.Info("log received:" + log_package.String())
+		log.Info("log received:" + logPackage.String())
 	}
 
 	return nil

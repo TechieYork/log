@@ -7,7 +7,7 @@
     },
     "kafka":
     {
-        "broker":"tkafkalog.useus.com.cn",
+        "broker":["tkafkalog.useus.com.cn"],
         "topic":"dark_metrix_log",
         "upload_number":"none"
     }

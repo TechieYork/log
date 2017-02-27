@@ -4,3 +4,5 @@ import:
   version: ^2.6
 - package: github.com/spf13/viper
 - package: github.com/spf13/cobra
+- package: github.com/Shopify/sarama
+  version: ^1.11.0

@@ -15,7 +15,7 @@ type CollectorInfo struct {
 
 //Kafka
 type KafkaInfo struct {
-	Broker string `mapstructure:"broker" json:"broker"`
+	Broker []string `mapstructure:"broker" json:"broker"`
 	Topic string `mapstructure:"topic" json:"topic"`
 	CompressCodec string `mapstructure:"compress_codec" json:"compress_codec"`
 }
@@ -33,7 +33,7 @@ var globalConfig *Config
 func NewConfig() *Config {
 	return &Config{
 		Collector:CollectorInfo{UnixDomainSocket:"/var/tmp/dark_metrix_log.sock", UploadDuration:1, UploadNumber:100},
-		Kafka:KafkaInfo{Broker:"", Topic:"dark_metrix_log", CompressCodec:"none"},
+		Kafka:KafkaInfo{Broker:make([]string, 0), Topic:"dark_metrix_log", CompressCodec:"none"},
 	}
 }
 

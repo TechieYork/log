@@ -8,8 +8,9 @@ import (
 	"os/signal"
 
 	"github.com/DarkMetrix/log/agent/src/config"
-	"github.com/DarkMetrix/log/agent/src/collector"
 	"github.com/DarkMetrix/log/agent/src/queue"
+	"github.com/DarkMetrix/log/agent/src/collector"
+	"github.com/DarkMetrix/log/agent/src/processor"
 
 	log "github.com/cihub/seelog"
 )
@@ -57,40 +58,53 @@ func main() {
 		return
 	}
 
-	log.Info(time.Now().String(), " Starting log_agent ... ")
+	log.Info(time.Now().String(), " Starting log agent ... ")
 
 	//Initialize the configuration from "../conf/config.json"
-	log.Info("Initialize log_agent configuration from ../conf/config.json ...")
+	log.Info("Initialize log agent configuration from ../conf/config.json ...")
 	config, err := InitConfig("../conf/config.json")
 
 	if err != nil {
-		log.Warnf("Initialize log_agent configuration failed! error:%s", err)
+		log.Warnf("Initialize log agent configuration failed! error:%s", err)
 		return
 	}
 
-	log.Info("Initialize log_agent configuration successed! config:", config)
+	log.Info("Initialize log agent configuration successed! config:", config)
 
 	//Initialize log queue
 	log.Info("Initialize log queue ...")
-	log_queue := queue.NewLogQueue(20000)
+	logQueue := queue.NewLogQueue(20000)
 
-	if log_queue == nil {
-		log.Warn("Initialize log queue failed! error:log_queue == nil")
+	if logQueue == nil {
+		log.Warn("Initialize log queue failed! error:logQueue == nil")
 		return
 	}
 
 	//Initialize unix domain socket collector
 	log.Info("Initialize collector ...")
-	log_collector := collector.NewCollector(config.Collector.UnixDomainSocket, log_queue)
+	logCollector := collector.NewCollector(config.Collector.UnixDomainSocket, logQueue)
 
-	err = log_collector.Run()
+	err = logCollector.Run()
 
 	if err != nil {
 		log.Warnf("Initialize log collector failed! error:%s", err)
 		return
 	}
 
-	defer log_collector.Close()
+	defer logCollector.Close()
+
+	//Initialize processor
+	log.Info("Initialize processor ...")
+	logProcessor := processor.NewKafkaProcessor(config.Kafka.Broker, "net_log", 10, logQueue)
+
+	err = logProcessor.Run()
+
+	if err != nil {
+		log.Warnf("Initialize log processor failed! error:%s", err)
+		return
+	}
+
+	defer logProcessor.Close()
 
 	//Deal with signals
 	signalChannel := make(chan os.Signal, 1)
