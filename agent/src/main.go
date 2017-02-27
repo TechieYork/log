@@ -73,7 +73,7 @@ func main() {
 
 	//Initialize log queue
 	log.Info("Initialize log queue ...")
-	logQueue := queue.NewLogQueue(20000)
+	logQueue := queue.NewLogQueue(config.Collector.LogQueueSize)
 
 	if logQueue == nil {
 		log.Warn("Initialize log queue failed! error:logQueue == nil")
@@ -95,7 +95,7 @@ func main() {
 
 	//Initialize processor
 	log.Info("Initialize processor ...")
-	logProcessor := processor.NewKafkaProcessor(config.Kafka.Broker, "net_log", 10, logQueue)
+	logProcessor := processor.NewKafkaProcessor(config.Kafka.Broker, config.Kafka.Topic, config.Kafka.CompressCodec, logQueue)
 
 	err = logProcessor.Run()
 

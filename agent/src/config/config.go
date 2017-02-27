@@ -9,8 +9,7 @@ const Version = "0.0.1"
 //Collector
 type CollectorInfo struct {
 	UnixDomainSocket string `mapstructure:"unix_domain_socket" json:"unix_domain_socket"`
-	UploadDuration int `mapstructure:"upload_duration" json:"upload_duration"`
-	UploadNumber int `mapstructure:"upload_number" json:"upload_number"`
+	LogQueueSize uint32 `mapstructure:"log_queue_size" json:"log_queue_size"`
 }
 
 //Kafka
@@ -32,7 +31,7 @@ var globalConfig *Config
 //New Config
 func NewConfig() *Config {
 	return &Config{
-		Collector:CollectorInfo{UnixDomainSocket:"/var/tmp/dark_metrix_log.sock", UploadDuration:1, UploadNumber:100},
+		Collector:CollectorInfo{UnixDomainSocket:"/var/tmp/dark_metrix_log.sock", LogQueueSize:20000},
 		Kafka:KafkaInfo{Broker:make([]string, 0), Topic:"dark_metrix_log", CompressCodec:"none"},
 	}
 }

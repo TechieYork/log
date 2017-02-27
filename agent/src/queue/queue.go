@@ -11,7 +11,7 @@ type LogQueue struct {
 	queueChannel chan *log_proto.LogPackage
 }
 
-func NewLogQueue(bufferSize int) *LogQueue {
+func NewLogQueue(bufferSize uint32) *LogQueue {
 	return &LogQueue{
 		queueChannel: make(chan *log_proto.LogPackage, bufferSize),
 	}

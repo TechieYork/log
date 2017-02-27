@@ -2,6 +2,7 @@ package processor
 
 import (
 	"time"
+	"errors"
 
 	"github.com/DarkMetrix/log/agent/src/queue"
 
@@ -13,7 +14,7 @@ import (
 type KafkaProcessor struct {
 	address []string
 	topic string
-	partitionNumber uint32
+	codec string
 
 	//producer sarama.AsyncProducer
 	producer sarama.SyncProducer
@@ -21,11 +22,11 @@ type KafkaProcessor struct {
 	logQueue *queue.LogQueue
 }
 
-func NewKafkaProcessor(address []string, topic string, partitionNumber uint32, logQueue *queue.LogQueue) *KafkaProcessor {
+func NewKafkaProcessor(address []string, topic string, codec string, logQueue *queue.LogQueue) *KafkaProcessor {
 	return &KafkaProcessor{
 		address: address,
 		topic: topic,
-		partitionNumber: partitionNumber,
+		codec: codec,
 		producer: nil,
 		logQueue: logQueue,
 	}
@@ -40,6 +41,23 @@ func (processor *KafkaProcessor) Run() error {
 	config.Producer.MaxMessageBytes = 4 * 1024 * 1024
 	config.Producer.Partitioner = sarama.NewHashPartitioner
 	config.Producer.Return.Successes = true
+
+	var codec sarama.CompressionCodec
+
+	switch processor.codec {
+	case "none":
+		codec = sarama.CompressionNone
+	case "gzip":
+		codec = sarama.CompressionGZIP
+	case "snappy":
+		codec = sarama.CompressionSnappy
+	case "lz4":
+		codec = sarama.CompressionLZ4
+	default:
+		return errors.New("Codec error, not one of 'none', 'gzip', 'snappy' or 'lz4'")
+	}
+
+	config.Producer.Compression = codec
 
 	//Init kafka producer
 	var err error
@@ -83,7 +101,7 @@ func (processor *KafkaProcessor) Process() error {
 			continue
 		}
 
-		partition, offset, err := processor.producer.SendMessage(&sarama.ProducerMessage{Topic:processor.topic, Key:sarama.StringEncoder(logPackage.GetProject()), Value:sarama.StringEncoder(data)})
+		partition, offset, err := processor.producer.SendMessage(&sarama.ProducerMessage{Topic:processor.topic, Key:sarama.StringEncoder(logPackage.GetProject()), Value:sarama.ByteEncoder(data)})
 
 		if err != nil {
 			log.Warn("Send message failed! err:" + err.Error())
