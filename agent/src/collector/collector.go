@@ -12,13 +12,15 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+//Log collector to collect log from unix domain socket
 type Collector struct {
-	address string
-	conn net.Conn
+	address string                      //Unix domain socket address
+	conn net.Conn                       //Unix domain socket connection
 
-	logQueue *queue.LogQueue
+	logQueue *queue.LogQueue            //Log queue to buffer logs to send later
 }
 
+//New collector function
 func NewCollector(address string, logQueue *queue.LogQueue) *Collector {
 	return &Collector{
 		address: address,
@@ -27,6 +29,7 @@ func NewCollector(address string, logQueue *queue.LogQueue) *Collector {
 	}
 }
 
+//Run to open unix domain socket and collect
 func (collector *Collector) Run() error {
 	//Initial local unix domain socket to recv log
 	unixAddr, err := net.ResolveUnixAddr("unixgram", collector.address)
@@ -52,9 +55,9 @@ func (collector *Collector) Run() error {
 	return nil
 }
 
-//Close function
+//Close unix domain socket and remove socket file
 func (collector *Collector) Close() error {
-	//Close conn
+	//Close connection
 	collector.conn.Close()
 
 	//Remove unix domain socket file
@@ -67,6 +70,7 @@ func (collector *Collector) Close() error {
 	return nil
 }
 
+//Collect go routine function
 func (collector *Collector) Collect() error {
 	buffer := make([]byte, 4*1024*1024)
 
@@ -88,7 +92,7 @@ func (collector *Collector) Collect() error {
 
 				err = collector.Run()
 
-				if nil != err {
+				if err != nil {
 					log.Warn("Collector restart failed! err:" + err.Error())
 				    time.Sleep(5 * time.Second)
 
@@ -109,9 +113,12 @@ func (collector *Collector) Collect() error {
 			continue
 		}
 
-		collector.logQueue.Push(&logPackage)
+		err = collector.logQueue.Push(&logPackage)
 
-		log.Info("log received:" + logPackage.String())
+		if err != nil {
+			log.Warn("Collector push log to queue failed! err:" + err.Error())
+			continue
+		}
 	}
 
 	return nil

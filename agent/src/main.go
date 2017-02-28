@@ -15,96 +15,123 @@ import (
 	log "github.com/cihub/seelog"
 )
 
-func InitLog(path string) error {
+//Init log
+func InitLog(path string) {
 	logger, err := log.LoggerFromConfigAsFile(path)
 
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	err = log.ReplaceLogger(logger)
 
 	if err != nil {
-		return err
+		panic(err)
 	}
-
-	return nil
 }
 
-func InitConfig(path string) (*config.Config, error) {
+//Init config
+func InitConfig(path string) *config.Config {
+	log.Info("Initialize log agent configuration from " + path + " ...")
+
 	globalConfig := config.GetConfig()
 
 	if globalConfig == nil {
-		return nil, errors.New("Get global config failed!")
+		panic(errors.New("Get global config failed!"))
 	}
 
 	err := globalConfig.Init(path)
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return globalConfig, nil
+	log.Info("Config:")
+
+	log.Infof("    collector.unix_domain_socket: %s", globalConfig.Collector.UnixDomainSocket)
+	log.Infof("    collector.log_queue_size: %d", globalConfig.Collector.LogQueueSize)
+
+	log.Infof("    kafka.broker: %s", globalConfig.Kafka.Broker)
+	log.Infof("    kafka.topic: %s", globalConfig.Kafka.Topic)
+	log.Infof("    kafka.compress_codec: %s", globalConfig.Kafka.CompressCodec)
+
+	return globalConfig
+}
+
+//Init log queue
+func InitLogQueue(config *config.Config) *queue.LogQueue {
+	log.Info("Initialize log queue ...")
+
+	logQueue := queue.NewLogQueue(config.Collector.LogQueueSize)
+
+	if logQueue == nil {
+		panic(errors.New("Initialize log queue failed! error:logQueue == nil"))
+	}
+
+	return logQueue
+}
+
+//Init collector
+func InitCollector(config *config.Config, logQueue *queue.LogQueue) *collector.Collector {
+	log.Info("Initialize collector ...")
+
+	logCollector := collector.NewCollector(config.Collector.UnixDomainSocket, logQueue)
+
+	err := logCollector.Run()
+
+	if err != nil {
+		panic(err)
+	}
+
+	return logCollector
+}
+
+//Init processor
+func InitProcessor(config *config.Config, logQueue *queue.LogQueue) *processor.KafkaProcessor {
+	log.Info("Initialize processor ...")
+
+	logProcessor := processor.NewKafkaProcessor(config.Kafka.Broker, config.Kafka.Topic, config.Kafka.CompressCodec, logQueue)
+
+	err := logProcessor.Run()
+
+	if err != nil {
+		panic(err)
+	}
+
+	return logProcessor
 }
 
 func main() {
 	defer log.Flush()
 
+	defer func() {
+		err := recover()
+
+		if err != nil {
+			log.Critical("Got panic, err:", err)
+		}
+	} ()
+
 	//Initialize log using configuration from "../conf/log.config"
-	err := InitLog("../conf/log.config")
+	InitLog("../conf/log.config")
 
-	if err != nil {
-		log.Warnf("Read config failed! error:%s", err)
-		return
-	}
-
-	log.Info(time.Now().String(), " Starting log agent ... ")
+	log.Info(time.Now().String(), " Log agent starting ... ")
 
 	//Initialize the configuration from "../conf/config.json"
-	log.Info("Initialize log agent configuration from ../conf/config.json ...")
-	config, err := InitConfig("../conf/config.json")
-
-	if err != nil {
-		log.Warnf("Initialize log agent configuration failed! error:%s", err)
-		return
-	}
-
-	log.Info("Initialize log agent configuration successed! config:", config)
+	config := InitConfig("../conf/config.json")
 
 	//Initialize log queue
-	log.Info("Initialize log queue ...")
-	logQueue := queue.NewLogQueue(config.Collector.LogQueueSize)
-
-	if logQueue == nil {
-		log.Warn("Initialize log queue failed! error:logQueue == nil")
-		return
-	}
+	logQueue := InitLogQueue(config)
 
 	//Initialize unix domain socket collector
-	log.Info("Initialize collector ...")
-	logCollector := collector.NewCollector(config.Collector.UnixDomainSocket, logQueue)
-
-	err = logCollector.Run()
-
-	if err != nil {
-		log.Warnf("Initialize log collector failed! error:%s", err)
-		return
-	}
-
+	logCollector := InitCollector(config, logQueue)
 	defer logCollector.Close()
 
 	//Initialize processor
-	log.Info("Initialize processor ...")
-	logProcessor := processor.NewKafkaProcessor(config.Kafka.Broker, config.Kafka.Topic, config.Kafka.CompressCodec, logQueue)
-
-	err = logProcessor.Run()
-
-	if err != nil {
-		log.Warnf("Initialize log processor failed! error:%s", err)
-		return
-	}
-
+	logProcessor := InitProcessor(config, logQueue)
 	defer logProcessor.Close()
+
+	log.Info(time.Now().String(), " Log agent started!")
 
 	//Deal with signals
 	signalChannel := make(chan os.Signal, 1)
