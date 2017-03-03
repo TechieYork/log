@@ -1,0 +1,15 @@
+{
+    "sinker":
+    {
+        "log_path":"/tmp/dark_metrix/log/",
+        "log_file_max_size":524288000,
+        "log_flush_duration":3,
+        "log_queue_size":10000
+    },
+    "kafka":
+    {
+        "broker":["localhost:9092"],
+        "topic":"net_log",
+        "partitions":[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    }
+}

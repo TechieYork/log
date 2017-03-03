@@ -4,68 +4,135 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"errors"
+
+	"github.com/DarkMetrix/log/server/src/config"
+	"github.com/DarkMetrix/log/server/src/queue"
+	"github.com/DarkMetrix/log/server/src/processor"
 
 	log "github.com/cihub/seelog"
+	"github.com/DarkMetrix/log/server/src/sinker"
 )
 
-func InitLog(path string) error {
+//Init log
+func InitLog(path string) {
 	logger, err := log.LoggerFromConfigAsFile(path)
 
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	err = log.ReplaceLogger(logger)
 
 	if err != nil {
-		return err
+		panic(err)
 	}
-
-	return nil
 }
 
-/*
-func InitConfig(path string) (*config.Config, error) {
+//Init config
+func InitConfig(path string) *config.Config {
+	log.Info("Initialize log agent configuration from " + path + " ...")
+
 	globalConfig := config.GetConfig()
 
 	if globalConfig == nil {
-		return nil, errors.New("Get global config failed!")
+		panic(errors.New("Get global config failed!"))
 	}
 
 	err := globalConfig.Init(path)
 
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return globalConfig, nil
+	log.Info("Config:")
+
+	log.Infof("    sinker.log_path: %s", globalConfig.Sinker.LogPath)
+	log.Infof("    sinker.log_file_max_size: %d Bytes", globalConfig.Sinker.LogFileMaxSize)
+	log.Infof("    sinker.log_flush_duration: %d Seconds", globalConfig.Sinker.LogFlushDuration)
+	log.Infof("    sinker.log_flush_duration: %d Seconds", globalConfig.Sinker.LogQueueSize)
+
+	log.Infof("    kafka.broker: %s", globalConfig.Kafka.Broker)
+	log.Infof("    kafka.topic: %s", globalConfig.Kafka.Topic)
+	log.Infof("    kafka.partitions: %v", globalConfig.Kafka.Partitions)
+
+	return globalConfig
 }
-*/
+
+//Init log queue
+func InitLogQueue(config *config.Config) *queue.LogQueue {
+	log.Info("Initialize log queue ...")
+
+	logQueue := queue.NewLogQueue(config.Sinker.LogQueueSize)
+
+	if logQueue == nil {
+		panic(errors.New("Initialize log queue failed! error:logQueue == nil"))
+	}
+
+	return logQueue
+}
+
+//Init processor
+func InitProcessor(config *config.Config, logQueue *queue.LogQueue) *processor.KafkaProcessor {
+	log.Info("Initialize processor ...")
+
+	logProcessor := processor.NewKafkaProcessor(config.Kafka.Broker, config.Kafka.Topic, config.Kafka.Partitions, logQueue)
+
+	err := logProcessor.Run()
+
+	if err != nil {
+		panic(err)
+	}
+
+	return logProcessor
+}
+
+//Init sinker
+func InitSinker(config *config.Config, logQueue *queue.LogQueue) *sinker.Sinker {
+	log.Info("Initialize sinker ...")
+
+	logSinker := sinker.NewSinker(config.Sinker.LogPath, config.Sinker.LogFileMaxSize, config.Sinker.LogFlushDuration, logQueue)
+
+	err := logSinker.Run()
+
+	if err != nil {
+		panic(err)
+	}
+
+	return logSinker
+}
 
 func main() {
 	defer log.Flush()
 
-	//Initialize log using configuration from "../conf/monitor_agent_log.config"
-	err := InitLog("../conf/log_server_log.config")
+	defer func() {
+		err := recover()
 
-	if err != nil {
-		log.Warnf("Read config failed! error:%s", err)
-		return
-	}
+		if err != nil {
+			log.Critical("Got panic, err:", err)
+		}
+	} ()
 
-	log.Info(time.Now().String(), "Starting log_server ... ")
+	//Initialize log using configuration from "../conf/log.config"
+	InitLog("../conf/log.config")
 
-	//Initialize the configuration from "../conf/monitor_agent_config.json"
-	/*log.Info("Initialize monitor_agent configuration from ../conf/monitor_agent_config.json ...")
-	config, err := InitConfig("../conf/monitor_agent_config.json")
+	log.Info(time.Now().String(), " Log server starting ... ")
 
-	if err != nil {
-		log.Warnf("Initialize monitor_agent configuration failed! error:%s", err)
-		return
-	}
+	//Initialize the configuration from "../conf/config.json"
+	config := InitConfig("../conf/config.json")
 
-	log.Info("Initialize monitor_agent configuration successed! config:", config)
-	*/
+	log.Info(time.Now().String(), " Log server started!")
+
+	//Initialize log queue
+	logQueue := InitLogQueue(config)
+
+	//Initialize processor
+	logProcessor := InitProcessor(config, logQueue)
+	defer logProcessor.Close()
+
+	//Initialize sinker
+	logSinker := InitSinker(config, logQueue)
+	defer logSinker.Close()
 
 	//Deal with signals
 	signalChannel := make(chan os.Signal, 1)
