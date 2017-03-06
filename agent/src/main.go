@@ -116,6 +116,7 @@ func main() {
 	InitLog("../conf/log.config")
 
 	log.Info(time.Now().String(), " Log agent starting ... ")
+	log.Info("Version: " + config.Version)
 
 	//Initialize the configuration from "../conf/config.json"
 	config := InitConfig("../conf/config.json")
