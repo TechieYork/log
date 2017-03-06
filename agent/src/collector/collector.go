@@ -4,6 +4,8 @@ import (
 	"os"
 	"net"
 	"time"
+	"fmt"
+	"errors"
 
 	log_proto "github.com/DarkMetrix/log/proto"
 	"github.com/DarkMetrix/log/agent/src/queue"
@@ -17,6 +19,8 @@ type Collector struct {
 	address string                      //Unix domain socket address
 	conn net.Conn                       //Unix domain socket connection
 
+	localIp string                      //Local ip
+
 	logQueue *queue.LogQueue            //Log queue to buffer logs to send later
 }
 
@@ -29,8 +33,39 @@ func NewCollector(address string, logQueue *queue.LogQueue) *Collector {
 	}
 }
 
+//Get local machine ip
+func (collector *Collector) getLocalIp() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+
+    if err != nil {
+		log.Warn("Get local ip failed! err:" + err.Error())
+	    return "", err
+    }
+
+    for _, addr := range addrs {
+        if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+            if ipnet.IP.To4() != nil {
+	            return ipnet.IP.String(), nil
+            }
+        }
+    }
+
+	return "", nil
+}
+
 //Run to open unix domain socket and collect
 func (collector *Collector) Run() error {
+	//Get local machine ip
+	var err error
+
+	collector.localIp, err = collector.getLocalIp()
+
+	if err != nil {
+		return err
+	} else if collector.localIp == ""{
+		return errors.New("Ip address that got it is empty!")
+	}
+
 	//Initial local unix domain socket to recv log
 	unixAddr, err := net.ResolveUnixAddr("unixgram", collector.address)
 
@@ -107,6 +142,8 @@ func (collector *Collector) Collect() error {
 		var logPackage log_proto.LogPackage
 
 		err = proto.Unmarshal(buffer[0:len], &logPackage)
+
+		logPackage.Log = []byte(fmt.Sprintf("[%s]%s", collector.localIp, string(logPackage.GetLog())))
 
 		if err != nil {
 			log.Warn("Collector couldn't unmarshal received buffer! err:" + err.Error())
