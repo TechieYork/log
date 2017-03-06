@@ -17,11 +17,11 @@ import (
 type SinkWorker struct {
 	filePath string                     //File path
 	fileName string                     //File name
-	fileSize int64                      //Log file size currently
+	fileSize int64                      //Log file size currently in bytes
 	fileMaxSize int64                   //Max size of log file in bytes
 	flushDuration uint32                //Flush called duration in seconds
 
-	logQueue *queue.LogQueue            //Log queue of specified service to buffer log which to sink later
+	logQueue *queue.LogQueue            //Log queue of specified service(log_proto.LogPackage.service) to buffer log which to sink later
 
 	file *os.File                       //Log file
 	writer *bufio.Writer                //Log buffer writer
@@ -57,6 +57,7 @@ func (worker *SinkWorker) initFile() error {
 	    return err
     }
 
+	//Get file stat
     fileInfo, err := worker.file.Stat()
 
     if nil != err {
@@ -64,6 +65,7 @@ func (worker *SinkWorker) initFile() error {
 	    return err
     }
 
+	//Set file size and create writer of 1M buffer
     worker.fileSize = fileInfo.Size()
     worker.writer = bufio.NewWriterSize(worker.file, 1 * 1024 * 1024)
 
@@ -72,7 +74,7 @@ func (worker *SinkWorker) initFile() error {
 
 //Run to sink log to file
 func (worker *SinkWorker) Run() error {
-	//Check dir
+	//Check dir if not exist
 	_, err := os.Stat(worker.filePath)
 
     if os.IsNotExist(err) {
@@ -93,6 +95,7 @@ func (worker *SinkWorker) Run() error {
 		return err
 	}
 
+	//Begin to process
 	go worker.process()
 
 	return nil
@@ -100,6 +103,7 @@ func (worker *SinkWorker) Run() error {
 
 //Close function
 func (worker *SinkWorker) Close() error {
+	//Close writer
 	if worker.writer != nil {
 		err := worker.writer.Flush()
 
@@ -110,6 +114,7 @@ func (worker *SinkWorker) Close() error {
 		worker.writer = nil
 	}
 
+	//Close file
 	if worker.file != nil {
 		err := worker.file.Close()
 
@@ -147,6 +152,7 @@ func (worker *SinkWorker) generateLog(logPackage *log_proto.LogPackage) string {
 func (worker *SinkWorker) writeLog(logContent string) error {
 	begin := 0
 
+	//Loop to write, in case the buffer is too big to write once
 	for {
 		writeLen, err := worker.writer.Write([]byte(logContent[begin:]))
 
@@ -192,7 +198,7 @@ func (worker *SinkWorker) process() error {
 				}
 			}
 
-			//Check buffer is full or not
+			//Check is there enough buffer to write, if not flush the buffer manually
 			if len(logContent) > worker.writer.Available() {
 				worker.writer.Flush()
 			}
@@ -220,7 +226,7 @@ func (worker *SinkWorker) process() error {
 			}
 
 			worker.fileSize += int64(len(logContent))
-		//Flush after duration
+		//Flush periodically
 		case <- time.After(time.Duration(worker.flushDuration) * time.Second):
 			worker.writer.Flush()
 		}
@@ -251,7 +257,7 @@ func NewSinker(path string, fileMaxSize int64, flushDuration uint32, logQueue *q
 
 //Run to sink
 func (sinker *Sinker) Run() error {
-	//Check dir
+	//Check dir if not exist
 	_, err := os.Stat(sinker.path)
 
     if os.IsNotExist(err) {
@@ -273,6 +279,14 @@ func (sinker *Sinker) Run() error {
 
 //Close and flush file buffer
 func (sinker *Sinker) Close() error {
+	for key, worker := range sinker.sinkWorkers {
+		err := worker.Close()
+
+		if err != nil {
+			log.Warn("Close worker failed! worker name:" + key)
+			continue
+		}
+	}
 	return nil
 }
 
@@ -332,7 +346,7 @@ func (sinker *Sinker) sink() error {
 		err = worker.LogQueue().Push(logPackage)
 
 		if err != nil {
-			//log.Warn("Sinker push worker log queue failed! err:" + err.Error())
+			log.Warn("Sinker push worker log queue failed! err:" + err.Error())
 			continue
 		}
 	}
