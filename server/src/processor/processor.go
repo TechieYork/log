@@ -12,7 +12,7 @@ import (
 //Kafka log processor
 type KafkaProcessor struct {
 	address []string                    //Broker list
-	topic string                        //Log topic, default "dark_metrix_log"
+	topic string                        //Log topic, default "net_log"
 	partitions []int32                  //Partitions to consume
 
 	consumer sarama.Consumer            //Kafka consumer

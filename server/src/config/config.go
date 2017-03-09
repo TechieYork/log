@@ -34,7 +34,7 @@ var globalConfig *Config
 func NewConfig() *Config {
 	return &Config{
 		Sinker:SinkerInfo{LogPath:"/tmp/dark_metrix/log", LogFileMaxSize:524288000, LogFlushDuration:3, LogQueueSize:5000},
-		Kafka:KafkaInfo{Broker:make([]string, 0), Topic:"dark_metrix_log", Partitions:make([]int32, 0)},
+		Kafka:KafkaInfo{Broker:make([]string, 0), Topic:"net_log", Partitions:make([]int32, 0)},
 	}
 }
 
