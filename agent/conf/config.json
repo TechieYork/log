@@ -1,7 +1,7 @@
 {
     "collector":
     {
-        "unix_domain_socket":"/var/tmp/dark_metrix_log.sock",
+        "unix_domain_socket":"/var/tmp/net_log.sock",
         "log_queue_size":20000
     },
     "kafka":

@@ -31,8 +31,8 @@ var globalConfig *Config
 //New Config
 func NewConfig() *Config {
 	return &Config{
-		Collector:CollectorInfo{UnixDomainSocket:"/var/tmp/dark_metrix_log.sock", LogQueueSize:20000},
-		Kafka:KafkaInfo{Broker:make([]string, 0), Topic:"dark_metrix_log", CompressCodec:"none"},
+		Collector:CollectorInfo{UnixDomainSocket:"/var/tmp/net_log.sock", LogQueueSize:20000},
+		Kafka:KafkaInfo{Broker:make([]string, 0), Topic:"net_log", CompressCodec:"none"},
 	}
 }
 

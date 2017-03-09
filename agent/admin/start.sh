@@ -8,14 +8,14 @@ echo "Current directory:"$(dirname $(readlink -f $0))
 
 cd `dirname $0`
 
-rm /var/tmp/dark_metrix_log.sock
+rm /var/tmp/net_log.sock
 
 ../bin/dm_log_agent &
 
 sleep 1
 
-chown nobody:nobody /var/tmp/dark_metrix_log.sock
+chown nobody:nobody /var/tmp/net_log.sock
 
-chmod 777 /var/tmp/dark_metrix_log.sock
+chmod 777 /var/tmp/net_log.sock
 
 echo "Already started $app_name"

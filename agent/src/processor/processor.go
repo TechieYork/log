@@ -14,7 +14,7 @@ import (
 //Kafka log processor
 type KafkaProcessor struct {
 	address []string                    //Broker list
-	topic string                        //Log topic, default "dark_metrix_log"
+	topic string                        //Log topic, default "net_log"
 	codec string                        //Compression codec, "none", "gzip", "snappy" or "lz4"
 
 	producer sarama.AsyncProducer       //Async kafka producer

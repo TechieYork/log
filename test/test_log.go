@@ -11,7 +11,7 @@ import (
 )
 
 func HandleUdp(w *sync.WaitGroup) {
-	conn, err := net.Dial("unixgram", "/var/tmp/dark_metrix_log.sock")
+	conn, err := net.Dial("unixgram", "/var/tmp/net_log.sock")
 
 	if nil != err {
 		fmt.Println("Dail failed! error:" + err.Error())
@@ -39,7 +39,7 @@ func HandleUdp(w *sync.WaitGroup) {
         fmt.Println("Marshal failed! err:" + err.Error())
     }
 
-	for index := 0; index < 1000000; index++ {
+	for index := 0; index < 3; index++ {
 		conn.Write(data)
 		//time.Sleep(10 * time.Millisecond)
 		//fmt.Printf("Test the %d time and send -> %s\r\n", index, log_package.GetLog())
