@@ -39,7 +39,7 @@ DarkMetrix log agent is an application that collect logs from unix domain socket
 - **collector.log_queue_size:** the size of log queue to buffer logs which would be sent.
 - **kafka.broker:** the Kafka broker list.
 - **kafka.topic:** the Kafka topic which the log would be produced.
-- **kafka.compress_codec:** the compression setting, support "**gzip**", "**snappy**", "**lz4**" and "**none**".
+- **kafka.compress_codec:** the compression setting, support "**gzip**", "**snappy**", "**lz4**" and "**none**".
 
 ##### log.config
 
