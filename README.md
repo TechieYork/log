@@ -5,8 +5,8 @@ A fast network logging system powered by Apache Kafka.
 
 
 ## Architecture
-![image](https://github.com/DarkMetrix/log/blob/master/doc/archetecture.png)
 
+![image](https://github.com/DarkMetrix/log/blob/master/doc/archetecture.png)
 
 ## Quick start
 
@@ -44,7 +44,26 @@ $go build -o ../bin/dm_log_server
 $../admin/start.sh
 ```
 
+## Protocol
 
+We use  google/protobuf as the protocol, so you shuold use protobuf whatever programming language you use to marshal the log and send via unix domain socket.
+
+#### log.proto
+
+```
+syntax = "proto2";
+
+package log_proto;
+
+//Log package
+message LogPackage
+{
+    optional string project = 1;    //Project name(Also used as the folder name)
+    optional string service = 2;    //Service name(Also used in the log file name)
+    optional uint32 level = 3;      //Log level(INFO = 0, WARNING = 1, ERROR = 2, FATAL = 3)
+    optional bytes  log = 4;        //Log content
+};
+```
 
 ## Configuration
 
@@ -68,7 +87,7 @@ MIT license
 
 #### Dependencies
 
-* github.com/cihub/seelog [BSD License](https://github.com/cihub/seelog/blob/master/LICENSE.txt)
-* github.com/golang/protobuf/proto [BSD License](https://github.com/golang/protobuf/blob/master/LICENSE)
-* github.com/spf13/viper [MIT License](https://github.com/spf13/viper/blob/master/LICENSE)
-* github.com/Shopify/sarama [MIT License](https://github.com/Shopify/sarama/blob/master/LICENSE)
+- github.com/cihub/seelog [BSD License](https://github.com/cihub/seelog/blob/master/LICENSE.txt)
+- github.com/golang/protobuf/proto [BSD License](https://github.com/golang/protobuf/blob/master/LICENSE)
+- github.com/spf13/viper [MIT License](https://github.com/spf13/viper/blob/master/LICENSE)
+- github.com/Shopify/sarama [MIT License](https://github.com/Shopify/sarama/blob/master/LICENSE)
