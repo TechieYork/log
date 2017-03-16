@@ -6,7 +6,7 @@ A fast network logging system powered by Apache Kafka.
 
 ## Architecture
 
-![image](https://github.com/DarkMetrix/log/blob/master/doc/archetecture.png)
+![image](https://github.com/DarkMetrix/log/blob/master/doc/architecture.png)
 
 ## Quick start
 
