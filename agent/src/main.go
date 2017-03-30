@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"time"
+	"strings"
+	"flag"
 
 	"os"
 	"os/signal"
@@ -44,6 +46,36 @@ func InitConfig(path string) *config.Config {
 
 	if err != nil {
 		panic(err)
+	}
+
+	//Parse flag
+	unix_domain_socket := flag.String("unix_domain_socket", "", "The unix domain socket path, default:/var/tmp/net_log.sock")
+	log_queue_size := flag.Int("log_queue_size", 0, "The size of log transform queue to buffer logs, default:20000")
+	broker := flag.String("broker", "", "The kafka broker list, eg:localhost:9092,localhost:9093, default is empty")
+	topic := flag.String("topic", "", "The kafka topic which the logs will be sent to, default:net_log")
+	codec := flag.String("codec", "", "The compress codec will be used to send the logs, none, gzip, snappy, lz4 available, default:none")
+
+	flag.Parse()
+
+	if len(*unix_domain_socket) != 0 {
+		globalConfig.Collector.UnixDomainSocket = *unix_domain_socket
+	}
+
+	if *log_queue_size != 0 {
+		globalConfig.Collector.LogQueueSize = uint32(*log_queue_size)
+	}
+
+	if len(*broker) != 0 {
+		brokers := strings.Split(*broker, ",")
+		globalConfig.Kafka.Broker = brokers
+	}
+
+	if len(*topic) != 0 {
+		globalConfig.Kafka.Topic = *topic
+	}
+
+	if len(*codec) != 0 {
+		globalConfig.Kafka.CompressCodec = *codec
 	}
 
 	log.Info("Config:")

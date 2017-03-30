@@ -66,6 +66,18 @@ func (collector *Collector) Run() error {
 		return errors.New("Ip address that got it is empty!")
 	}
 
+	//Remove if unix domain socket exist
+	_, err = os.Stat(collector.address)
+
+	if err == nil {
+		err = os.Remove(collector.address)
+
+		if err != nil {
+			log.Warn("Remove unix domain socket file failed! err:" + err.Error())
+			return err
+		}
+	}
+
 	//Initial local unix domain socket to recv log
 	unixAddr, err := net.ResolveUnixAddr("unixgram", collector.address)
 
@@ -83,6 +95,20 @@ func (collector *Collector) Run() error {
 	}
 
     collector.conn = conn
+
+	//Change unix domain socket file mode
+	err = os.Chmod(collector.address, 0777)
+
+	if err != nil {
+		return err
+	}
+
+	//Change unix domain socket file to nobody
+	err = os.Chown(collector.address, 99, 99)
+
+	if err != nil {
+		return err
+	}
 
     //Begin recv local log
     go collector.Collect()
