@@ -4,31 +4,31 @@ import (
 	"github.com/DarkMetrix/log/proto"
 	"github.com/DarkMetrix/log/server/src/queue"
 
-	log "github.com/cihub/seelog"
 	"github.com/Shopify/sarama"
+	log "github.com/cihub/seelog"
 	"github.com/golang/protobuf/proto"
 )
 
 //Kafka log processor
 type KafkaProcessor struct {
-	address []string                    //Broker list
-	topic string                        //Log topic, default "net_log"
-	partitions []int32                  //Partitions to consume
+	address    []string //Broker list
+	topic      string   //Log topic, default "net_log"
+	partitions []int32  //Partitions to consume
 
-	consumer sarama.Consumer            //Kafka consumer
+	consumer           sarama.Consumer            //Kafka consumer
 	partitionConsumers []sarama.PartitionConsumer //Kafka partition consumers
 
-	logQueue *queue.LogQueue            //Log queue to buffer log which to sink later
+	logQueue *queue.LogQueue //Log queue to buffer log which to sink later
 }
 
 //New kafka processor function
 func NewKafkaProcessor(address []string, topic string, partitions []int32, logQueue *queue.LogQueue) *KafkaProcessor {
 	return &KafkaProcessor{
-		address: address,
-		topic: topic,
+		address:    address,
+		topic:      topic,
 		partitions: partitions,
-		consumer: nil,
-		logQueue: logQueue,
+		consumer:   nil,
+		logQueue:   logQueue,
 	}
 }
 
@@ -90,11 +90,20 @@ func (processor *KafkaProcessor) Close() error {
 
 //Process go routine function
 func (processor *KafkaProcessor) process(partitionConsumer sarama.PartitionConsumer) error {
+	defer func() {
+		err := recover()
+
+		if err != nil {
+			log.Critical("Got panic, err:", err)
+			go processor.process(partitionConsumer)
+		}
+	}()
+
 	//Loop to consume log from kafka
 	for {
 		select {
 		//Consume log
-		case message := <- partitionConsumer.Messages():
+		case message := <-partitionConsumer.Messages():
 			var logPackage log_proto.LogPackage
 
 			//Unmashal log

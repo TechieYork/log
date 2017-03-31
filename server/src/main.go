@@ -1,20 +1,20 @@
 package main
 
 import (
+	"flag"
+	"errors"
 	"os"
 	"os/signal"
 	"time"
-	"errors"
+	"strconv"
+	"strings"
 
 	"github.com/DarkMetrix/log/server/src/config"
-	"github.com/DarkMetrix/log/server/src/queue"
 	"github.com/DarkMetrix/log/server/src/processor"
+	"github.com/DarkMetrix/log/server/src/queue"
 
-	log "github.com/cihub/seelog"
 	"github.com/DarkMetrix/log/server/src/sinker"
-	"flag"
-	"strings"
-	"strconv"
+	log "github.com/cihub/seelog"
 )
 
 //Init log
@@ -165,7 +165,7 @@ func main() {
 		if err != nil {
 			log.Critical("Got panic, err:", err)
 		}
-	} ()
+	}()
 
 	//Initialize log using configuration from "../conf/log.config"
 	InitLog("../conf/log.config")

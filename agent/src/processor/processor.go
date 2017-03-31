@@ -1,33 +1,33 @@
 package processor
 
 import (
-	"time"
 	"errors"
+	"time"
 
 	"github.com/DarkMetrix/log/agent/src/queue"
 
-	log "github.com/cihub/seelog"
 	"github.com/Shopify/sarama"
+	log "github.com/cihub/seelog"
 	"github.com/golang/protobuf/proto"
 )
 
 //Kafka log processor
 type KafkaProcessor struct {
-	address []string                    //Broker list
-	topic string                        //Log topic, default "net_log"
-	codec string                        //Compression codec, "none", "gzip", "snappy" or "lz4"
+	address []string //Broker list
+	topic   string   //Log topic, default "net_log"
+	codec   string   //Compression codec, "none", "gzip", "snappy" or "lz4"
 
-	producer sarama.AsyncProducer       //Async kafka producer
+	producer sarama.AsyncProducer //Async kafka producer
 
-	logQueue *queue.LogQueue            //Log queue to buffer log which process to send later
+	logQueue *queue.LogQueue //Log queue to buffer log which process to send later
 }
 
 //New kafka processor function
 func NewKafkaProcessor(address []string, topic string, codec string, logQueue *queue.LogQueue) *KafkaProcessor {
 	return &KafkaProcessor{
-		address: address,
-		topic: topic,
-		codec: codec,
+		address:  address,
+		topic:    topic,
+		codec:    codec,
 		producer: nil,
 		logQueue: logQueue,
 	}
@@ -108,9 +108,9 @@ func (processor *KafkaProcessor) Process() error {
 		}
 
 		select {
-		case processor.producer.Input() <- &sarama.ProducerMessage{Topic:processor.topic, Key:sarama.StringEncoder(logPackage.GetProject()), Value:sarama.ByteEncoder(data)}:
+		case processor.producer.Input() <- &sarama.ProducerMessage{Topic: processor.topic, Key: sarama.StringEncoder(logPackage.GetProject()), Value: sarama.ByteEncoder(data)}:
 			//log.Info("Send message success!")
-		case err := <- processor.producer.Errors():
+		case err := <-processor.producer.Errors():
 			log.Warn("Send message failed! err:" + err.Error())
 		}
 	}
