@@ -7,6 +7,7 @@ import (
 	"github.com/Shopify/sarama"
 	log "github.com/cihub/seelog"
 	"github.com/golang/protobuf/proto"
+	"errors"
 )
 
 //Kafka log processor
@@ -88,17 +89,38 @@ func (processor *KafkaProcessor) Close() error {
 	return nil
 }
 
-//Process go routine function
-func (processor *KafkaProcessor) process(partitionConsumer sarama.PartitionConsumer) error {
+//Process
+func (processor *KafkaProcessor) processMessage(message *sarama.ConsumerMessage, logPackage *log_proto.LogPackage) (e error) {
 	defer func() {
 		err := recover()
 
 		if err != nil {
 			log.Critical("Got panic, err:", err)
-			go processor.process(partitionConsumer)
+			e = errors.New("Got panic when process message!")
 		}
 	}()
 
+	//Unmarshal log
+	err := proto.Unmarshal(message.Value, logPackage)
+
+	if err != nil {
+		log.Warn("Processor couldn't unmarshal received buffer! err:" + err.Error())
+		return err
+	}
+
+	//Push to log queue
+	err = processor.logQueue.Push(logPackage)
+
+	if err != nil {
+		log.Warn("Processor push log to queue failed! err:" + err.Error())
+		return err
+	}
+
+	return nil
+}
+
+//Process go routine function
+func (processor *KafkaProcessor) process(partitionConsumer sarama.PartitionConsumer) error {
 	//Loop to consume log from kafka
 	for {
 		select {
@@ -106,20 +128,10 @@ func (processor *KafkaProcessor) process(partitionConsumer sarama.PartitionConsu
 		case message := <-partitionConsumer.Messages():
 			var logPackage log_proto.LogPackage
 
-			//Unmashal log
-			err := proto.Unmarshal(message.Value, &logPackage)
+			err := processor.processMessage(message, &logPackage)
 
 			if err != nil {
-				log.Warn("Processor couldn't unmarshal received buffer! err:" + err.Error())
-				continue
-			}
-
-			//Push to log queue
-			err = processor.logQueue.Push(&logPackage)
-
-			if err != nil {
-				log.Warn("Processor push log to queue failed! err:" + err.Error())
-				continue
+				log.Warn("Process message failed! err:" + err.Error())
 			}
 		}
 	}
