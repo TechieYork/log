@@ -15,8 +15,9 @@ import (
 
 //Sink worker
 type SinkWorker struct {
-	filePath string                     //File path
-	fileName string                     //File name
+	curFilePath string					//Current file path, eg:/tmp/dark_metrix/test_project/test_service.log.20170912090050
+	filePath string                     //File path, eg:/tmp/dark_metrix/test_project/
+	fileName string                     //File name, eg:test_service
 	fileSize int64                      //Log file size currently in bytes
 	fileMaxSize int64                   //Max size of log file in bytes
 	flushDuration uint32                //Flush called duration in seconds
@@ -30,6 +31,7 @@ type SinkWorker struct {
 //New sink worker function
 func NewSinkWorker(filePath string, fileName string, fileMaxSize int64, flushDuration uint32) *SinkWorker {
 	return &SinkWorker{
+		curFilePath: "",
 		filePath: filePath,
 		fileName: fileName,
 		fileSize: 0,
@@ -46,11 +48,24 @@ func (worker *SinkWorker) LogQueue() *queue.LogQueue {
 	return worker.logQueue
 }
 
+//Check file exist
+func (worker *SinkWorker) checkFileExist() (bool, error) {
+	//Check file if not exist
+	_, err := os.Stat(worker.curFilePath)
+
+    if os.IsNotExist(err) {
+		return false, nil
+    }
+
+	return true, err
+}
+
 //Init
 func (worker *SinkWorker) initFile() error {
 	//Open file
 	var err error
-    worker.file, err = os.OpenFile(path.Join(worker.filePath, worker.fileName + ".log." + time.Now().Format("20060102T150405")), os.O_RDWR | os.O_CREATE | os.O_APPEND, os.ModePerm)
+	worker.curFilePath = path.Join(worker.filePath, worker.fileName + ".log." + time.Now().Format("20060102T150405"))
+    worker.file, err = os.OpenFile(worker.curFilePath, os.O_RDWR | os.O_CREATE | os.O_APPEND, os.ModePerm)
 
     if nil != err {
 	    log.Warnf("Worker open file failed! file name:%s, err:%s", worker.fileName, err.Error())
@@ -178,12 +193,18 @@ func (worker *SinkWorker) process() error {
 		select {
 		//Get log
 		case logPackage := <- worker.logQueue.Chan():
+			//Check file exist
+			exist, err := worker.checkFileExist()
+
+			if err != nil {
+				continue
+			}
 
 			//Generate log
 			logContent := worker.generateLog(logPackage)
 
 			//Check file size
-			if int64(len(logContent)) + worker.fileSize > worker.fileMaxSize {
+			if int64(len(logContent)) + worker.fileSize > worker.fileMaxSize || !exist{
 				worker.Close()
 
 				for {

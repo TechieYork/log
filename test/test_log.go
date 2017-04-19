@@ -2,50 +2,24 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"sync"
 	"time"
-
-	log_proto "github.com/DarkMetrix/log/proto"
-	"github.com/golang/protobuf/proto"
 	"flag"
+
+	net_log "github.com/DarkMetrix/log/client/golang"
 )
 
-func HandleUdp(w *sync.WaitGroup, unix_domain_socket string, number_per_thread int, message string, level int, project string, service string) {
-	conn, err := net.Dial("unixgram", unix_domain_socket)
-
-	if nil != err {
-		fmt.Println("Dail failed! error:" + err.Error())
-		w.Done()
-		return
-	}
-
-	defer conn.Close()
-
-    begin_time := time.Now().Unix()
-
-	//buffer := make([]byte, 1024)
-    var log_package log_proto.LogPackage
-    log_package.Project = proto.String(project)
-	log_package.Service = proto.String(service)
-	log_package.Level = proto.Uint32(uint32(level))
-    //log_package.Log = []byte(*(proto.String("01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789")))
-	log_package.Log = []byte(*(proto.String(message)))
-
-    data, err := proto.Marshal(&log_package)
-
-	fmt.Print(log_package.String())
-
-    if nil != err {
-        fmt.Println("Marshal failed! err:" + err.Error())
-    }
+func HandleUdp(w *sync.WaitGroup, number_per_thread int, message string, level uint32) {
+	begin_time := time.Now().Unix()
 
 	for index := 0; index < number_per_thread; index++ {
-		conn.Write(data)
+		err := net_log.SendNetLog(level, message)
 
-        if index % 1000 == 0 {
-            fmt.Printf("index:%d\r\n", index)
-        }
+		if err != nil {
+			fmt.Println("Sendto failed! error:" + err.Error())
+		}
+
+		fmt.Printf("index:%d\r\n", index)
 	}
 
     end_time := time.Now().Unix()
@@ -77,14 +51,30 @@ func main() {
 
 	flag.Parse()
 
+	//Init net log
+	err := net_log.InitNetLog("test_project", "test_service")
+
+	if err != nil {
+		fmt.Println("Init net log failed! error:" + err.Error())
+		return
+	}
+
 	var w sync.WaitGroup
 	w.Add(*threads)
 
 	for i := 0; i < *threads; i++{
-		go HandleUdp(&w, *unix_domain_socket, *number_per_thread, *message, *level, *project, *service)
+		go HandleUdp(&w, *number_per_thread, *message, uint32(*level))
 	}
 
 	w.Wait()
+
+	err = net_log.UninitNetLog()
+
+	if err != nil {
+		fmt.Println("Uninit net log failed! error:" + err.Error())
+		return
+	}
+
 	fmt.Println("unix socket test client end")
 }
 
