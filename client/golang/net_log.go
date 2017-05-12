@@ -46,6 +46,13 @@ func InitNetLog (project string, service string) error {
 		return err
 	}
 
+	//Set socket write buffer
+	err = syscall.SetsockoptInt(netLogSocket, syscall.SOL_SOCKET, syscall.SO_SNDBUF, netLogSendBufferLen)
+
+	if err != nil {
+		return err
+	}
+
 	netLogProject = project
 	netLogService = service
 

@@ -94,6 +94,14 @@ func (collector *Collector) Run() error {
 		return err
 	}
 
+	//Set read buffer
+	err = conn.SetReadBuffer(16 * 1024 * 1024)
+
+	if nil != err {
+		log.Warn("Set read buffer err:" + err.Error())
+		return err
+	}
+
     collector.conn = conn
 
 	//Change unix domain socket file mode
